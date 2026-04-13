@@ -20,7 +20,7 @@
     "axios": "^1.10.0",
     "bootstrap": "^5.3.7",
     "bootstrap-icons": "^1.13.1",
-    "dotenv": "^17.4.1",
+    "dotenv": "^17.4.2",
     "email-validator": "^2.0.4",
     "formik": "^2.4.6",
     "picomatch": "^4.0.4",
