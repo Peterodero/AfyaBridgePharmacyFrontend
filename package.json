@@ -1,0 +1,55 @@
+{
+  "name": "pharmacy_frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "generate:routes": "tsr generate",
+    "dev": "npm run generate:routes && vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.8.2",
+    "@tanstack/devtools-vite": "^0.6.0",
+    "@tanstack/react-devtools": "^0.10.2",
+    "@tanstack/react-query": "^5.83.0",
+    "@tanstack/react-router": "^1.127.9",
+    "axios": "^1.10.0",
+    "bootstrap": "^5.3.7",
+    "bootstrap-icons": "^1.13.1",
+    "dotenv": "^17.4.1",
+    "email-validator": "^2.0.4",
+    "formik": "^2.4.6",
+    "picomatch": "^4.0.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
+    "react-leaflet": "^5.0.0",
+    "react-redux": "^9.2.0",
+    "react-toastify": "^11.0.5",
+    "redux": "^5.0.1",
+    "yup": "^1.6.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@tailwindcss/vite": "^4.2.2",
+    "@tanstack/react-query-devtools": "^5.83.0",
+    "@tanstack/router-cli": "^1.127.8",
+    "@tanstack/router-plugin": "^1.127.9",
+    "@tanstack/router-vite-plugin": "^1.166.27",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "tailwindcss": "^4.2.2",
+    "vite": "^8.0.0-beta.13"
+  },
+  "overrides": {
+    "vite": "^8.0.0-beta.13"
+  }
+}

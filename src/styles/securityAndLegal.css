@@ -1,0 +1,16 @@
+/* ── 2FA toggle: larger, blue when checked ─────────────────────────── */
+.twofa-switch {
+  width: 2.8em;
+  height: 1.5em;
+  cursor: pointer;
+}
+.twofa-switch:checked {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+/* ── password strength label colours ──────────────────────────────── */
+.strength-label-1 { color: #dc3545; }   /* WEAK   */
+.strength-label-2 { color: #ffc107; }   /* FAIR   */
+.strength-label-3 { color: #0dcaf0; }   /* GOOD   */
+.strength-label-4 { color: #198754; }   /* STRONG */

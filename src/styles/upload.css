@@ -1,0 +1,45 @@
+/* ── spinner animation ─────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.icon-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* ── upload card dynamic border states ─────────────────── */
+.upload-card {
+  border: 1.5px dashed #dee2e6;
+  transition: border-color 0.3s ease;
+  min-height: 185px;
+}
+.upload-card.is-uploading {
+  border-color: #0d6efd;
+}
+.upload-card.is-done {
+  border-color: #198754;
+}
+
+/* ── progress bar color swap on done ───────────────────── */
+.upload-card.is-done .progress-bar {
+  background-color: #198754 !important;
+}
+
+/* ── frequency toggle: checked label looks active ──────── */
+.freq-btn input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.freq-btn {
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+.freq-btn.active {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  color: #fff;
+}
+.is-done {
+    border-color: #198754;
+}
