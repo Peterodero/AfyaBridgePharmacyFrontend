@@ -1,12 +1,10 @@
-import { createLazyFileRoute } from '@tanstack/react-router'
-import { useEffect } from 'react'
 
-export const Route = createLazyFileRoute('/')({
+import { createLazyFileRoute, Navigate } from "@tanstack/react-router";
+
+export const Route = createLazyFileRoute("/")({
   component: RouteComponent,
-})
+});
 
 function RouteComponent() {
-  useEffect(() => {
-    window.location.href = '/auth/login/'
-  }, [])
+  return <Navigate to="/auth/login" />;
 }
