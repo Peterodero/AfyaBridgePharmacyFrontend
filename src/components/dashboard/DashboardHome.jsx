@@ -1,13 +1,10 @@
-// Dashboard.jsx
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useSelector } from "react-redux";
 import { useApi } from "../../hooks/useApi";
-import { getDashboardReport, getOrders, getTodayOrders, getReadyOrders } from "../../services/api";
-import OrderRowSkeleton from "../skeletons/OrderRowSkeleton";
+import { getDashboardReport, getAvailableOrders } from "../../services/api";
 import DashboardStats from "../dashboard/DashboardStats";
 import PendingOrdersTable from "../dashboard/PendingOrdersTable";
-import WelcomeCard from "../dashboard/WelcomeCard";
 import TodayOrdersTable from "../dashboard/TodayOrdersTable";
 import ReadyOrdersTable from "../dashboard/ReadyOrdersTable";
 import PharmacyNotLinkedBanner from "../dashboard/PharmacyNotLinkedBanner";
@@ -23,46 +20,42 @@ export default function Dashboard() {
     getDashboardReport, null, [refreshKey], { silent: true }
   );
 
-  const { data: ordersData, loading: ordersLoading } = useApi(
-    getOrders,
-    { status: "pending", page_size: 5 },
-    [refreshKey],
-    { silent: true }
-  );
-
-  const { data: todayData, loading: todayLoading } = useApi(
-    getTodayOrders, null, [refreshKey], { silent: true }
-  );
-
-  const { data: readyData, loading: readyLoading } = useApi(
-    getReadyOrders, null, [refreshKey], { silent: true }
+  // Single source of truth — same endpoint as Orders page
+  const { data: availableData, loading: ordersLoading } = useApi(
+    getAvailableOrders, null, [refreshKey], { silent: true }
   );
 
   const stats = statsData ?? {};
-  const orders = Array.isArray(ordersData) ? ordersData : ordersData?.results ?? [];
-  
-  const todayOrders = (() => {
-    const d = todayData;
-    if (!d) return [];
-    return Array.isArray(d) ? d : d?.results ?? [];
+
+  const allOrders = (() => {
+    if (!availableData) return [];
+    return Array.isArray(availableData) ? availableData : availableData?.results ?? [];
   })();
 
-  const readyOrders = (() => {
-    const d = readyData;
-    if (!d) return [];
-    return Array.isArray(d) ? d : d?.results ?? [];
-  })();
+  // Client-side derived lists — always accurate, always in sync with Orders page
+  const pendingOrders = allOrders.filter(o => o.status === "pending").slice(0, 5);
+  const readyOrders   = allOrders.filter(o => o.status === "ready");
+  const todayOrders   = allOrders.filter(o => {
+    if (!o.created_at) return false;
+    const d   = new Date(o.created_at);
+    const now = new Date();
+    return (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth()    === now.getMonth()    &&
+      d.getDate()     === now.getDate()
+    );
+  });
+
+  // Always use local count for pending and ready — never trust dashboard report for these
+  // since they come from getAvailableOrders which is the actual source
+  const pendingCount    = allOrders.filter(o => o.status === "pending").length;
+  const readyCount      = readyOrders.length;
+  // These have no local equivalent so use dashboard report
+  const lowStockCount   = stats.low_stock_alerts  ?? 0;
+  const deliveriesCount = stats.active_deliveries ?? 0;
+  const revenueAmount   = stats.today_revenue      ?? 0;
 
   const pharmacyLinked = Boolean(user?.pharmacy_id);
-  const userName = user?.full_name || "Pharmacy User";
-  const pharmacyId = user?.pharmacy_id;
-  const accountStatus = user?.account_status || "active";
-
-  const pendingCount = stats.pending_orders ?? 0;
-  const lowStockCount = stats.low_stock_alerts ?? 0;
-  const readyCount = stats.ready_for_pickup ?? 0;
-  const deliveriesCount = stats.active_deliveries ?? 0;
-  const revenueAmount = stats.today_revenue ?? 0;
 
   const statsDataForCards = {
     pendingCount,
@@ -70,42 +63,33 @@ export default function Dashboard() {
     readyCount,
     deliveriesCount,
     revenueAmount,
-    statsLoading
+    statsLoading,
   };
 
   return (
     <div>
       <PharmacyNotLinkedBanner pharmacyLinked={pharmacyLinked} user={user} />
-      
       <DashboardStats stats={statsDataForCards} />
-      
-      <div className=" w-full">
-        <PendingOrdersTable 
-          orders={orders}
+
+      <div className="w-full">
+        <PendingOrdersTable
+          orders={pendingOrders}
           ordersLoading={ordersLoading}
           pharmacyLinked={pharmacyLinked}
           onRefresh={refresh}
           onViewOrder={() => navigate({ to: "/dashboard/orders" })}
         />
-{/*         
-        <WelcomeCard 
-          userName={userName}
-          pharmacyLinked={pharmacyLinked}
-          pharmacyId={pharmacyId}
-          accountStatus={accountStatus}
-        /> */}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 20 }}>
-        <TodayOrdersTable 
+        <TodayOrdersTable
           orders={todayOrders}
-          loading={todayLoading}
+          loading={ordersLoading}
           pharmacyLinked={pharmacyLinked}
         />
-        
-        <ReadyOrdersTable 
+        <ReadyOrdersTable
           orders={readyOrders}
-          loading={readyLoading}
+          loading={ordersLoading}
           pharmacyLinked={pharmacyLinked}
           onNavigate={() => navigate({ to: "/dashboard/orders" })}
         />
