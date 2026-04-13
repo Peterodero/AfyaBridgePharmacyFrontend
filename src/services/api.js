@@ -134,7 +134,7 @@ export const registerPharmacy = (formData) =>
 
 // ── ORDERS ────────────────────────────────────────────────────────────────────
 // Backend routes: no trailing slashes on sub-routes (Fiber doesn't redirect)
-export const getOrders          = (params)    => client.get('/orders/available', { params });
+export const getOrders          = (params)    => client.get('/orders', { params });
 export const getTodayOrders     = ()          => client.get('/orders/today');
 export const getReadyOrders     = ()          => client.get('/orders/ready');
 export const getAvailableRiders = ()          => client.get('/orders/riders/available');

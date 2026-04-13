@@ -77,7 +77,7 @@ function RouteComponent() {
           <div style={{ maxWidth: '500px', width: '100%' }} className="p-4">
             <h2 className="fw-bold">Welcome Back, Pharmacist</h2>
             <p className="text-muted mb-4">
-              Enter your credentials to manage your inventory and prescriptions.
+              Enter your credentials to manage your inventory and orders.
             </p>
 
             <Formik

@@ -1,26 +1,40 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  RiRefreshLine, RiSearchLine, RiUserLine,
-  RiCheckLine, RiCloseLine, RiTruckLine, RiAlertLine,
-  RiEyeLine, RiFileListLine, RiUserStarLine,
+  RiRefreshLine,
+  RiSearchLine,
+  RiUserLine,
+  RiCheckLine,
+  RiCloseLine,
+  RiTruckLine,
+  RiAlertLine,
+  RiEyeLine,
+  RiFileListLine,
+  RiUserStarLine,
 } from "react-icons/ri";
-import client, { getOrders, updateOrderStatus, cancelOrder, dispenseOrder, assignRiderToOrder, getAvailableRiders, serveOrder } from "../../services/api";
+import {
+  getAvailableOrders,
+  updateOrderStatus,
+  cancelOrder,
+  dispenseOrder,
+  assignRiderToOrder,
+  getAvailableRiders,
+  serveOrder,
+} from "../../services/api";
 import OrderDetailsModal from "./OrderDetailsModal";
 
 const PAGE_SIZE = 8;
 
-// Removed "processing" and "dispatched" - keeping pending, ready, delivered, cancelled
 const STATUS_TABS = ["pending", "ready", "cancelled"];
-const TAB_LABELS = { 
-  pending: "Pending", 
-  ready: "Ready", 
-  cancelled: "Cancelled" 
+const TAB_LABELS = {
+  pending: "Pending",
+  ready: "Ready",
+  cancelled: "Cancelled",
 };
 
 const STATUS_CLS = {
   pending: "pending",
   ready: "approved",
-  delivered: "completed", 
+  delivered: "completed",
   cancelled: "rejected",
 };
 
@@ -33,46 +47,90 @@ function ServeModal({ order, onClose, onSuccess }) {
     try {
       const res = await serveOrder(order.id);
       onSuccess(res.data?.data ?? res.data);
-    } catch(e) {
+    } catch (e) {
       const err = e.response?.data;
       alert(err?.message || "Failed to serve order");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div className="ab-modal-overlay" onClick={onClose}>
-      <div className="ab-modal" style={{ maxWidth:440 }} onClick={e=>e.stopPropagation()}>
+      <div
+        className="ab-modal"
+        style={{ maxWidth: 440 }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="ab-modal-header">
           <h3>Serve Patient — {order.order_number}</h3>
-          <button className="ab-modal-close" onClick={onClose}>✕</button>
+          <button className="ab-modal-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
         <div className="ab-modal-body">
-          <p style={{fontSize:13,color:"var(--ab-slate-600)",marginBottom:16}}>
-            Confirm that patient <strong>{order.patient_name}</strong> has been served.
-            This will mark the order as <strong>delivered</strong> and update inventory.
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--ab-slate-600)",
+              marginBottom: 16,
+            }}
+          >
+            Confirm that patient <strong>{order.patient_name}</strong> has been
+            served. This will mark the order as <strong>delivered</strong> and
+            update inventory.
           </p>
-          <div style={{background:"var(--ab-slate-50)",borderRadius:8,padding:"10px 14px",marginBottom:16}}>
-            <div style={{fontSize:13,fontWeight:600,color:"var(--ab-slate-700)",marginBottom:8}}>
+          <div
+            style={{
+              background: "var(--ab-slate-50)",
+              borderRadius: 8,
+              padding: "10px 14px",
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--ab-slate-700)",
+                marginBottom: 8,
+              }}
+            >
               Order Summary:
             </div>
             {order.items?.map((it, i) => (
-              <div key={i} style={{fontSize:13,color:"var(--ab-slate-700)",marginBottom:4}}>
-                • {it.name || it.drug_name} — {it.dosage}, qty {it.quantity || "N/A"}
+              <div
+                key={i}
+                style={{
+                  fontSize: 13,
+                  color: "var(--ab-slate-700)",
+                  marginBottom: 4,
+                }}
+              >
+                • {it.name || it.drug_name} — {it.dosage}, qty{" "}
+                {it.quantity || "N/A"}
               </div>
             ))}
           </div>
           <div className="ab-form-group">
             <label>Action</label>
-            <div style={{fontSize:13,color:"#059669",fontWeight:500}}>
+            <div style={{ fontSize: 13, color: "#059669", fontWeight: 500 }}>
               This will complete the order and deduct stock from inventory.
             </div>
           </div>
         </div>
         <div className="ab-modal-footer">
-          <button className="ab-btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="ab-btn-primary" disabled={loading} onClick={handleServe}
-            style={{background:"#059669"}}>
-            <RiUserStarLine size={14}/> {loading?"Processing…":"Confirm Serve"}
+          <button className="ab-btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="ab-btn-primary"
+            disabled={loading}
+            onClick={handleServe}
+            style={{ background: "#059669" }}
+          >
+            <RiUserStarLine size={14} />{" "}
+            {loading ? "Processing…" : "Confirm Serve"}
           </button>
         </div>
       </div>
@@ -82,17 +140,17 @@ function ServeModal({ order, onClose, onSuccess }) {
 
 // Assign Rider Modal
 function AssignRiderModal({ order, onClose, onSuccess }) {
-  const [riders,   setRiders]   = useState([]);
-  const [riderId,  setRiderId]  = useState("");
-  const [notes,    setNotes]    = useState("");
-  const [charges,  setCharges]  = useState("");
-  const [etaText,  setEtaText]  = useState("");
-  const [loading,  setLoading]  = useState(false);
+  const [riders, setRiders] = useState([]);
+  const [riderId, setRiderId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [charges, setCharges] = useState("");
+  const [etaText, setEtaText] = useState("");
+  const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
     getAvailableRiders()
-      .then(r => setRiders(r.data?.data ?? r.data ?? []))
+      .then((r) => setRiders(r.data?.data ?? r.data ?? []))
       .catch(() => setRiders([]))
       .finally(() => setFetching(false));
   }, []);
@@ -109,52 +167,94 @@ function AssignRiderModal({ order, onClose, onSuccess }) {
       });
       const data = res.data?.data ?? res.data;
       onSuccess(data);
-    } catch(e) {
+    } catch (e) {
       alert(e.response?.data?.message || "Failed to assign rider");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div className="ab-modal-overlay" onClick={onClose}>
-      <div className="ab-modal" style={{ maxWidth:480 }} onClick={e=>e.stopPropagation()}>
+      <div
+        className="ab-modal"
+        style={{ maxWidth: 480 }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="ab-modal-header">
           <h3>Assign Rider — {order.order_number}</h3>
-          <button className="ab-modal-close" onClick={onClose}>✕</button>
+          <button className="ab-modal-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
         <div className="ab-modal-body">
-          <div className="ab-form-group" style={{ marginBottom:16 }}>
+          <div className="ab-form-group" style={{ marginBottom: 16 }}>
             <label>Select Rider *</label>
-            {fetching ? <div style={{fontSize:13,color:"var(--ab-slate-400)"}}>Loading riders…</div> :
-              riders.length === 0 ? <div style={{fontSize:13,color:"#dc2626"}}>No riders currently on duty.</div> :
-              <select className="ab-select" value={riderId} onChange={e=>setRiderId(e.target.value)} style={{width:"100%"}}>
+            {fetching ? (
+              <div style={{ fontSize: 13, color: "var(--ab-slate-400)" }}>
+                Loading riders…
+              </div>
+            ) : riders.length === 0 ? (
+              <div style={{ fontSize: 13, color: "#dc2626" }}>
+                No riders currently on duty.
+              </div>
+            ) : (
+              <select
+                className="ab-select"
+                value={riderId}
+                onChange={(e) => setRiderId(e.target.value)}
+                style={{ width: "100%" }}
+              >
                 <option value="">— Choose a rider —</option>
-                {riders.map(r=>(
+                {riders.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.full_name} · {r.vehicle_type} ({r.plate_number})
                   </option>
                 ))}
               </select>
-            }
+            )}
           </div>
           <div className="ab-form-row">
             <div className="ab-form-group">
               <label>Delivery Fee (KES)</label>
-              <input type="number" min="0" value={charges} onChange={e=>setCharges(e.target.value)} placeholder="e.g. 250" />
+              <input
+                type="number"
+                min="0"
+                value={charges}
+                onChange={(e) => setCharges(e.target.value)}
+                placeholder="e.g. 250"
+              />
             </div>
             <div className="ab-form-group">
               <label>ETA</label>
-              <input type="text" value={etaText} onChange={e=>setEtaText(e.target.value)} placeholder="e.g. 45 minutes" />
+              <input
+                type="text"
+                value={etaText}
+                onChange={(e) => setEtaText(e.target.value)}
+                placeholder="e.g. 45 minutes"
+              />
             </div>
           </div>
           <div className="ab-form-group">
             <label>Delivery Notes</label>
-            <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} placeholder="Special instructions for the rider…" />
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Special instructions for the rider…"
+            />
           </div>
         </div>
         <div className="ab-modal-footer">
-          <button className="ab-btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="ab-btn-primary" disabled={!riderId||loading||fetching} onClick={handleAssign}>
-            <RiTruckLine size={14}/> {loading?"Assigning…":"Assign Rider"}
+          <button className="ab-btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="ab-btn-primary"
+            disabled={!riderId || loading || fetching}
+            onClick={handleAssign}
+          >
+            <RiTruckLine size={14} /> {loading ? "Assigning…" : "Assign Rider"}
           </button>
         </div>
       </div>
@@ -170,46 +270,94 @@ function DispenseModal({ order, onClose, onSuccess }) {
   async function handleDispense() {
     setLoading(true);
     try {
-      const res = await dispenseOrder(order.id, instructions ? { instructions } : {});
+      const res = await dispenseOrder(
+        order.id,
+        instructions ? { instructions } : {},
+      );
       onSuccess(res.data?.data ?? res.data);
-    } catch(e) {
+    } catch (e) {
       const err = e.response?.data;
       const stockErrors = err?.errors?.stock_errors;
-      alert(stockErrors ? stockErrors.join("\n") : (err?.message || "Dispense failed"));
-    } finally { setLoading(false); }
+      alert(
+        stockErrors
+          ? stockErrors.join("\n")
+          : err?.message || "Dispense failed",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   const prescriptionItems = order.prescription?.items || [];
 
   return (
     <div className="ab-modal-overlay" onClick={onClose}>
-      <div className="ab-modal" style={{ maxWidth:440 }} onClick={e=>e.stopPropagation()}>
+      <div
+        className="ab-modal"
+        style={{ maxWidth: 440 }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="ab-modal-header">
           <h3>Dispense to Patient — {order.order_number}</h3>
-          <button className="ab-modal-close" onClick={onClose}>✕</button>
+          <button className="ab-modal-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
         <div className="ab-modal-body">
-          <p style={{fontSize:13,color:"var(--ab-slate-600)",marginBottom:16}}>
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--ab-slate-600)",
+              marginBottom: 16,
+            }}
+          >
             Patient <strong>{order.patient_name}</strong> is here for pickup.
-            This will deduct stock and mark the order as <strong>delivered</strong>.
+            This will deduct stock and mark the order as{" "}
+            <strong>delivered</strong>.
           </p>
-          <div style={{background:"var(--ab-slate-50)",borderRadius:8,padding:"10px 14px",marginBottom:16}}>
+          <div
+            style={{
+              background: "var(--ab-slate-50)",
+              borderRadius: 8,
+              padding: "10px 14px",
+              marginBottom: 16,
+            }}
+          >
             {prescriptionItems.map((it, i) => (
-              <div key={i} style={{fontSize:13,color:"var(--ab-slate-700)",marginBottom:4}}>
+              <div
+                key={i}
+                style={{
+                  fontSize: 13,
+                  color: "var(--ab-slate-700)",
+                  marginBottom: 4,
+                }}
+              >
                 • {it.name} — {it.dosage}, qty {it.quantity || "N/A"}
               </div>
             ))}
           </div>
           <div className="ab-form-group">
             <label>Dispensing Instructions (optional)</label>
-            <textarea rows={2} value={instructions} onChange={e=>setInstructions(e.target.value)} placeholder="e.g. Take with food…" />
+            <textarea
+              rows={2}
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              placeholder="e.g. Take with food…"
+            />
           </div>
         </div>
         <div className="ab-modal-footer">
-          <button className="ab-btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="ab-btn-primary" disabled={loading} onClick={handleDispense}
-            style={{background:"#059669"}}>
-            <RiCheckLine size={14}/> {loading?"Dispensing…":"Confirm Dispense"}
+          <button className="ab-btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="ab-btn-primary"
+            disabled={loading}
+            onClick={handleDispense}
+            style={{ background: "#059669" }}
+          >
+            <RiCheckLine size={14} />{" "}
+            {loading ? "Dispensing…" : "Confirm Dispense"}
           </button>
         </div>
       </div>
@@ -218,69 +366,81 @@ function DispenseModal({ order, onClose, onSuccess }) {
 }
 
 export default function Orders() {
-  const [activeTab, setActiveTab]   = useState("pending");
-  const [page,      setPage]        = useState(1);
-  const [search,    setSearch]      = useState("");
-  const [searchInput,setSearchInput]= useState("");
-  const [priority,  setPriority]    = useState("");
+  const [activeTab, setActiveTab] = useState("pending");
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [priority, setPriority] = useState("");
 
-  const [orders,    setOrders]      = useState([]);
-  const [counts,    setCounts]      = useState({});
-  const [total,     setTotal]       = useState(0);
-  const [loading,   setLoading]     = useState(true);
-  const [error,     setError]       = useState(null);
+  // All orders fetched once from /orders/available
+  const [allOrders, setAllOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [dispenseTarget, setDispenseTarget] = useState(null);
-  const [riderTarget,    setRiderTarget]    = useState(null);
-  const [serveTarget,    setServeTarget]    = useState(null);
-  const [viewOrder,      setViewOrder]      = useState(null);
-  const [actionLoading,  setActionLoading]  = useState(null);
+  const [riderTarget, setRiderTarget] = useState(null);
+  const [serveTarget, setServeTarget] = useState(null);
+  const [viewOrder, setViewOrder] = useState(null);
+  const [actionLoading, setActionLoading] = useState(null);
 
+  // Fetch allfetchOrder available orders from /orders/available — no params
   const fetchOrders = useCallback(async () => {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
-      const params = { status: activeTab, page, page_size: PAGE_SIZE };
-      if (search)   params.q        = search;
-      if (priority) params.priority = priority;
-      const res  = await getOrders(params);
+      const res = await getAvailableOrders();
       const body = res.data?.data ?? res.data;
-      console.log("Fetched orders:", body);
-      if (body?.results) { setOrders(body.results); setTotal(body.count ?? body.results.length); }
-      else { setOrders(Array.isArray(body)?body:[]); setTotal(Array.isArray(body)?body.length:0); }
-    } catch(e) {
-      const msg = e.response?.data?.message || e.message || "Failed to load orders";
+      // body is a plain array from this endpoint
+      const list = Array.isArray(body) ? body : (body?.results ?? []);
+      setAllOrders(list);
+    } catch (e) {
+      const msg =
+        e.response?.data?.message || e.message || "Failed to load orders";
       setError(msg);
-    } finally { setLoading(false); }
-  }, [activeTab, page, search, priority]);
-
-  const fetchCounts = useCallback(async () => {
-    try {
-      const results = await Promise.allSettled(
-        STATUS_TABS.map(s => client.get(`/orders/?status=${s}&page_size=1`))
-      );
-      const nc = {};
-      STATUS_TABS.forEach((s,i) => {
-        if (results[i].status === "fulfilled") {
-          const b = results[i].value.data?.data ?? results[i].value.data;
-          nc[s] = b?.count ?? (Array.isArray(b)?b.length:0);
-        } else { nc[s] = counts[s] ?? 0; }
-      });
-      setCounts(nc);
-    } catch(err) {console.log(err)}
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(()=>{ fetchOrders(); },   [fetchOrders]);
-  useEffect(()=>{ fetchCounts(); },   [fetchCounts]);
-  useEffect(()=>{ setPage(1); },      [activeTab, search, priority]);
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  // Reset to page 1 when tab/search/priority changes
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, search, priority]);
+
+  // Client-side filtering
+  const filtered = allOrders.filter((o) => {
+    if (o.status !== activeTab) return false;
+    if (priority && o.priority !== priority) return false;
+    if (search && !o.patient_name?.toLowerCase().includes(search.toLowerCase()))
+      return false;
+    return true;
+  });
+
+  // Tab counts derived from allOrders
+  const counts = STATUS_TABS.reduce((acc, s) => {
+    acc[s] = allOrders.filter((o) => o.status === s).length;
+    return acc;
+  }, {});
+
+  // Pagination on filtered list
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageOrders = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   async function handleStatusUpdate(order, newStatus) {
     setActionLoading(order.id);
     try {
-      console.log("Updating order", order.id, "to status", newStatus);
       await updateOrderStatus(order.id, { status: newStatus });
-      await Promise.all([fetchOrders(), fetchCounts()]);
-    } catch(e) { alert(e.response?.data?.message || "Update failed"); }
-    finally { setActionLoading(null); }
+      await fetchOrders();
+    } catch (e) {
+      alert(e.response?.data?.message || "Update failed");
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   async function handleCancel(order) {
@@ -289,97 +449,85 @@ export default function Orders() {
     setActionLoading(order.id);
     try {
       await cancelOrder(order.id, reason ? { reason } : {});
-      await Promise.all([fetchOrders(), fetchCounts()]);
-    } catch(e) { alert(e.response?.data?.message || "Cancel failed"); }
-    finally { setActionLoading(null); }
+      await fetchOrders();
+    } catch (e) {
+      alert(e.response?.data?.message || "Cancel failed");
+    } finally {
+      setActionLoading(null);
+    }
   }
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   function ActionCell({ order }) {
     const busy = actionLoading === order.id;
-    const s    = order.status;
+    const s = order.status;
     return (
-      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-        <button 
-          className="ab-btn-view" 
-          style={{ fontSize:12, padding:"5px 10px" }}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <button
+          className="ab-btn-view"
+          style={{ fontSize: 12, padding: "5px 10px" }}
           onClick={() => setViewOrder(order)}
         >
-          <RiEyeLine size={12}/> View
+          <RiEyeLine size={12} /> View
         </button>
-        
-        {/* Serve button for pending orders */}
+
         {s === "pending" && (
-          <button 
-            className="ab-btn-primary" 
-            style={{ fontSize:12, padding:"5px 12px", background:"#059669" }}
-            disabled={busy} 
+          <button
+            className="ab-btn-primary"
+            style={{ fontSize: 12, padding: "5px 12px", background: "#059669" }}
+            disabled={busy}
             onClick={() => setServeTarget(order)}
           >
-            <RiUserStarLine size={12}/> Serve
+            <RiUserStarLine size={12} /> Serve
           </button>
         )}
-        
-        {/* Cancel button for pending orders */}
+
         {s === "pending" && (
-          <button 
-            style={{ fontSize:12, padding:"5px 10px", background:"#fee2e2", color:"#991b1b", border:"none", borderRadius:6, cursor:"pointer" }}
-            disabled={busy} 
+          <button
+            style={{
+              fontSize: 12,
+              padding: "5px 10px",
+              background: "#fee2e2",
+              color: "#991b1b",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+            disabled={busy}
             onClick={() => handleCancel(order)}
           >
-            <RiCloseLine size={12}/> Cancel
+            <RiCloseLine size={12} /> Cancel
           </button>
         )}
-        
-        {/* Mark Ready button for ready orders - can move to delivered */}
+
         {s === "ready" && (
-          <button 
-            className="ab-btn-primary" 
-            style={{ fontSize:12, padding:"5px 12px" }}
-            disabled={busy} 
+          <button
+            className="ab-btn-primary"
+            style={{ fontSize: 12, padding: "5px 12px" }}
+            disabled={busy}
             onClick={() => handleStatusUpdate(order, "delivered")}
           >
-            <RiCheckLine size={12}/> Mark Delivered
+            <RiCheckLine size={12} /> Mark Delivered
           </button>
         )}
-        
-        {/* Dispense button for ready pickup orders */}
+
         {s === "ready" && order.delivery_type === "pickup" && (
-          <button 
-            className="ab-btn-primary" 
-            style={{ fontSize:12, padding:"5px 12px", background:"#059669" }}
-            disabled={busy} 
+          <button
+            className="ab-btn-primary"
+            style={{ fontSize: 12, padding: "5px 12px", background: "#059669" }}
+            disabled={busy}
             onClick={() => setDispenseTarget(order)}
           >
-            <RiCheckLine size={12}/> Dispense
+            <RiCheckLine size={12} /> Dispense
           </button>
         )}
-        
-        {/* Assign Rider button for ready delivery orders */}
-        {/* {s === "ready" && order.delivery_type !== "pickup" && (
-          <button 
-            className="ab-btn-primary" 
-            style={{ fontSize:12, padding:"5px 12px" }}
-            disabled={busy} 
-            onClick={() => setRiderTarget(order)}
-          >
-            <RiTruckLine size={12}/> Assign Rider
-          </button>
-        )} */}
       </div>
     );
   }
 
-  // Helper function to get prescription items
-  const getPrescriptionItems = (order) => {
-    return order.prescription?.items || [];
-  };
+  const getPrescriptionItems = (order) => order.prescription?.items || [];
 
-  // Helper function to render medication column
   const renderMedicationColumn = (order) => {
     const items = getPrescriptionItems(order);
-    
     if (items && items.length > 0) {
       const firstItem = items[0];
       return (
@@ -392,7 +540,10 @@ export default function Orders() {
             {firstItem.frequency && ` · ${firstItem.frequency}`}
             {firstItem.duration && ` · ${firstItem.duration}`}
             {items.length > 1 && (
-              <span style={{ color: "#9ca3af" }}> +{items.length - 1} more</span>
+              <span style={{ color: "#9ca3af" }}>
+                {" "}
+                +{items.length - 1} more
+              </span>
             )}
           </div>
         </>
@@ -401,19 +552,17 @@ export default function Orders() {
     return <span style={{ color: "#9ca3af", fontSize: 13 }}>—</span>;
   };
 
-  // Helper function to format delivery type display
   const getDeliveryTypeDisplay = (order) => {
     if (order.delivery_type === "home_delivery") return "Delivery";
     if (order.delivery_type === "pickup") return "Pickup";
     return order.delivery_type || "—";
   };
 
-  // Helper function to get delivery type styles
   const getDeliveryTypeStyles = (order) => {
     const isPickup = order.delivery_type === "pickup";
     return {
       background: isPickup ? "#eff6ff" : "#f5f3ff",
-      color: isPickup ? "#1152d4" : "#7c3aed"
+      color: isPickup ? "#1152d4" : "#7c3aed",
     };
   };
 
@@ -422,20 +571,28 @@ export default function Orders() {
       <div className="ab-page-header">
         <div className="ab-page-title">
           <h1>Order Management</h1>
-          <p>Fulfill prescription orders — dispense pickups or assign delivery riders.</p>
+          <p>
+            Fulfill prescription orders — dispense pickups or assign delivery
+            riders.
+          </p>
         </div>
-        <div style={{ display:"flex", gap:8 }}>
-          <button className="ab-btn-secondary" onClick={()=>{fetchOrders();fetchCounts();}}>
-            <RiRefreshLine size={15}/> Refresh
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="ab-btn-secondary" onClick={fetchOrders}>
+            <RiRefreshLine size={15} /> Refresh
           </button>
         </div>
       </div>
 
-      {/* Tabs - Only pending, ready, delivered, cancelled */}
+      {/* Tabs */}
       <div className="ab-tabs">
-        {STATUS_TABS.map(s=>(
-          <div key={s} className={`ab-tab ${activeTab===s?"active":""}`} onClick={()=>setActiveTab(s)}>
-            {TAB_LABELS[s]} <span className="ab-tab-count">{counts[s]??0}</span>
+        {STATUS_TABS.map((s) => (
+          <div
+            key={s}
+            className={`ab-tab ${activeTab === s ? "active" : ""}`}
+            onClick={() => setActiveTab(s)}
+          >
+            {TAB_LABELS[s]}{" "}
+            <span className="ab-tab-count">{counts[s] ?? 0}</span>
           </div>
         ))}
       </div>
@@ -443,30 +600,76 @@ export default function Orders() {
       <div className="ab-card">
         {/* Action bar */}
         <div className="ab-action-bar">
-          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-            <div style={{ display:"flex", alignItems:"center", border:"1px solid #e5e7eb", borderRadius:8, padding:"6px 10px", gap:6, background:"#fff" }}>
-              <RiSearchLine size={14} color="#9ca3af"/>
-              <input value={searchInput} onChange={e=>setSearchInput(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&setSearch(searchInput)}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                padding: "6px 10px",
+                gap: 6,
+                background: "#fff",
+              }}
+            >
+              <RiSearchLine size={14} color="#9ca3af" />
+              <input
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && setSearch(searchInput)}
                 placeholder="Search patient name…"
-                style={{ border:"none", outline:"none", fontSize:13, width:180 }}
+                style={{
+                  border: "none",
+                  outline: "none",
+                  fontSize: 13,
+                  width: 180,
+                }}
               />
-              {searchInput && <button onClick={()=>{setSearchInput("");setSearch("");}} style={{background:"none",border:"none",cursor:"pointer",color:"#9ca3af"}}>✕</button>}
+              {searchInput && (
+                <button
+                  onClick={() => {
+                    setSearchInput("");
+                    setSearch("");
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#9ca3af",
+                  }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
-            <select className="ab-select" value={priority} onChange={e=>setPriority(e.target.value)}>
+            <select
+              className="ab-select"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+            >
               <option value="">All Priorities</option>
               <option value="normal">Normal</option>
               <option value="urgent">Urgent</option>
             </select>
           </div>
-          <span style={{ fontSize:13, color:"var(--ab-slate-400)" }}>
-            {loading?"Loading…":`${total} ${TAB_LABELS[activeTab]} orders`}
+          <span style={{ fontSize: 13, color: "var(--ab-slate-400)" }}>
+            {loading ? "Loading…" : `${total} ${TAB_LABELS[activeTab]} orders`}
           </span>
         </div>
 
         {error && (
-          <div style={{ padding:"12px 20px", background:"#fef2f2", color:"#dc2626", fontSize:13, display:"flex", gap:8, alignItems:"center" }}>
-            <RiAlertLine size={15}/> {error}
+          <div
+            style={{
+              padding: "12px 20px",
+              background: "#fef2f2",
+              color: "#dc2626",
+              fontSize: 13,
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+            }}
+          >
+            <RiAlertLine size={15} /> {error}
           </div>
         )}
 
@@ -485,83 +688,107 @@ export default function Orders() {
           </thead>
           <tbody>
             {loading ? (
-              Array.from({length: PAGE_SIZE}).map((_, i) => (
+              Array.from({ length: PAGE_SIZE }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({length: 8}).map((_, j) => (
-                    <td key={j}><div style={{height: 14, background: "#f3f4f6", borderRadius: 4}} /></td>
+                  {Array.from({ length: 8 }).map((_, j) => (
+                    <td key={j}>
+                      <div
+                        style={{
+                          height: 14,
+                          background: "#f3f4f6",
+                          borderRadius: 4,
+                        }}
+                      />
+                    </td>
                   ))}
                 </tr>
               ))
-            ) : orders.length === 0 ? (
+            ) : pageOrders.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{textAlign: "center", padding: 40, color: "#9ca3af"}}>
+                <td
+                  colSpan={8}
+                  style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}
+                >
                   No {TAB_LABELS[activeTab].toLowerCase()} orders.
                 </td>
               </tr>
             ) : (
-              orders.map((order) => {
+              pageOrders.map((order) => {
                 const deliveryStyles = getDeliveryTypeStyles(order);
                 const deliveryDisplay = getDeliveryTypeDisplay(order);
-                
                 return (
                   <tr key={order.id}>
-                    {/* Order # */}
                     <td>
-                      <div style={{fontWeight: 700, fontSize: 13}}>{order.order_number}</div>
-                      <div style={{fontSize: 11, color: "var(--ab-slate-400)"}}>
+                      <div style={{ fontWeight: 700, fontSize: 13 }}>
+                        {order.order_number}
+                      </div>
+                      <div
+                        style={{ fontSize: 11, color: "var(--ab-slate-400)" }}
+                      >
                         {new Date(order.created_at).toLocaleDateString("en-KE")}
                       </div>
                     </td>
-                    
-                    {/* Patient */}
                     <td>
-                      <div style={{fontWeight: 600, fontSize: 13}}>{order.patient_name}</div>
-                      <div style={{fontSize: 11, color: "var(--ab-slate-400)"}}>{order.patient_phone}</div>
-                    </td>
-                    
-                    {/* Medication */}
-                    <td>{renderMedicationColumn(order)}</td>
-                    
-                    {/* Amount */}
-                    <td>
-                      <div style={{fontWeight: 700, fontSize: 13}}>
-                        KES {Number(order.total_amount || 0).toLocaleString("en-KE")}
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>
+                        {order.patient_name}
                       </div>
-                      <div style={{fontSize: 11, color: order.payment_status === "paid" ? "#059669" : "#d97706"}}>
+                      <div
+                        style={{ fontSize: 11, color: "var(--ab-slate-400)" }}
+                      >
+                        {order.patient_phone}
+                      </div>
+                    </td>
+                    <td>{renderMedicationColumn(order)}</td>
+                    <td>
+                      <div style={{ fontWeight: 700, fontSize: 13 }}>
+                        KES{" "}
+                        {Number(order.total_amount || 0).toLocaleString(
+                          "en-KE",
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color:
+                            order.payment_status === "paid"
+                              ? "#059669"
+                              : "#d97706",
+                        }}
+                      >
                         {order.payment_status || "unpaid"}
                       </div>
                     </td>
-                    
-                    {/* Priority */}
                     <td>
-                      <span className={`ab-priority ${order.priority || "normal"}`}>
+                      <span
+                        className={`ab-priority ${order.priority || "normal"}`}
+                      >
                         {order.priority || "normal"}
                       </span>
                     </td>
-                    
-                    {/* Delivery Type */}
                     <td>
-                      <span style={{ 
-                        fontSize: 12, 
-                        fontWeight: 600, 
-                        padding: "3px 8px", 
-                        borderRadius: 6,
-                        background: deliveryStyles.background,
-                        color: deliveryStyles.color 
-                      }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          padding: "3px 8px",
+                          borderRadius: 6,
+                          background: deliveryStyles.background,
+                          color: deliveryStyles.color,
+                        }}
+                      >
                         {deliveryDisplay}
                       </span>
                     </td>
-                    
-                    {/* Status */}
                     <td>
-                      <span className={`ab-status ${STATUS_CLS[order.status] || "pending"}`}>
+                      <span
+                        className={`ab-status ${STATUS_CLS[order.status] || "pending"}`}
+                      >
                         {TAB_LABELS[order.status] || order.status}
                       </span>
                     </td>
-                    
-                    {/* Actions */}
-                    <td><ActionCell order={order}/></td>
+                    <td>
+                      <ActionCell order={order} />
+                    </td>
                   </tr>
                 );
               })
@@ -572,44 +799,86 @@ export default function Orders() {
         {!loading && total > PAGE_SIZE && (
           <div className="ab-pagination">
             <div className="ab-page-info">
-              Showing <strong>{(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE,total)}</strong> of {total}
+              Showing{" "}
+              <strong>
+                {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)}
+              </strong>{" "}
+              of {total}
             </div>
             <div className="ab-page-btns">
-              <button className="ab-page-btn" disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button>
-              {Array.from({length:totalPages}, (_, i)=>i+1).slice(Math.max(0,page-2), Math.min(totalPages,page+1)).map(n=>(
-                <button key={n} className={`ab-page-btn ${page===n?"active":""}`} onClick={()=>setPage(n)}>{n}</button>
-              ))}
-              <button className="ab-page-btn" disabled={page===totalPages} onClick={()=>setPage(p=>p+1)}>Next</button>
+              <button
+                className="ab-page-btn"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Previous
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .slice(Math.max(0, page - 2), Math.min(totalPages, page + 1))
+                .map((n) => (
+                  <button
+                    key={n}
+                    className={`ab-page-btn ${page === n ? "active" : ""}`}
+                    onClick={() => setPage(n)}
+                  >
+                    {n}
+                  </button>
+                ))}
+              <button
+                className="ab-page-btn"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Order Details Modal */}
+      {/* Modals */}
       {viewOrder && (
-        <OrderDetailsModal order={viewOrder} onClose={() => setViewOrder(null)} TAB_LABELS={TAB_LABELS} />
+        <OrderDetailsModal
+          order={viewOrder}
+          onClose={() => setViewOrder(null)}
+          TAB_LABELS={TAB_LABELS}
+        />
       )}
 
-      {/* Serve modal */}
       {serveTarget && (
-        <ServeModal order={serveTarget} onClose={()=>setServeTarget(null)}
-          onSuccess={()=>{ setServeTarget(null); fetchOrders(); fetchCounts(); }} />
+        <ServeModal
+          order={serveTarget}
+          onClose={() => setServeTarget(null)}
+          onSuccess={() => {
+            setServeTarget(null);
+            fetchOrders();
+          }}
+        />
       )}
 
-      {/* Dispense modal */}
       {dispenseTarget && (
-        <DispenseModal order={dispenseTarget} onClose={()=>setDispenseTarget(null)}
-          onSuccess={()=>{ setDispenseTarget(null); fetchOrders(); fetchCounts(); }} />
+        <DispenseModal
+          order={dispenseTarget}
+          onClose={() => setDispenseTarget(null)}
+          onSuccess={() => {
+            setDispenseTarget(null);
+            fetchOrders();
+          }}
+        />
       )}
 
-      {/* Assign rider modal */}
       {riderTarget && (
-        <AssignRiderModal order={riderTarget} onClose={()=>setRiderTarget(null)}
-          onSuccess={(data)=>{
-            alert(`Rider assigned! OTP: ${data.otp_code} · Package: ${data.package_number}`);
+        <AssignRiderModal
+          order={riderTarget}
+          onClose={() => setRiderTarget(null)}
+          onSuccess={(data) => {
+            alert(
+              `Rider assigned! OTP: ${data.otp_code} · Package: ${data.package_number}`,
+            );
             setRiderTarget(null);
-            fetchOrders(); fetchCounts();
-          }} />
+            fetchOrders();
+          }}
+        />
       )}
     </>
   );
