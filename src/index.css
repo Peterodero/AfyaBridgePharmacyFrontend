@@ -77,8 +77,18 @@ button:hover {
   }
 }
 
+/* Add to your main CSS file */
+.bg-primary-subtle {
+  background-color: rgba(17, 82, 212, 0.1);
+}
 
+.x-small {
+  font-size: 0.75rem;
+}
 
+.bg-primary-subtle {
+  background-color: rgba(17, 82, 212, 0.1);
+}
 
 /* Modal Overlay - Backdrop */
 .ab-modal-overlay {
